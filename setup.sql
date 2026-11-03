@@ -12,6 +12,7 @@ create table if not exists public.refs (
   tags        text[] not null default '{}',
   why         text not null default '',
   script      text not null default '',
+  idea        text not null default '',
   image_path  text not null default '',
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
