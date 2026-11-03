@@ -81,6 +81,14 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
 .body h3 { margin: 0; font-size: 16px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
 .why { margin: 0; font-size: 14px; line-height: 1.6; border-left: 3px solid var(--cat); padding-left: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .why .k { display: block; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
+.script { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+.script summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+.script summary::-webkit-details-marker { display: none; }
+.script summary::after { content: "펼치기"; font-weight: 700; color: var(--accent); letter-spacing: 0; }
+.script[open] summary::after { content: "접기"; }
+.script .txt { margin: 0; padding: 0 10px 8px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow-y: auto; }
+.script .copy { margin: 0 10px 10px; border: 0; background: var(--chip); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--ink); }
+.field textarea.tall { min-height: 140px; }
 .tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .tags span { background: var(--chip); border-radius: 5px; padding: 2px 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; border-top: 1px dashed var(--line); }
@@ -197,6 +205,9 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
     <label class="field"><span>왜 저장했나</span>
       <textarea id="f-why" placeholder="예: 첫 1초에 손이 문고리를 잡는 클로즈업. 소리부터 들려서 멈추게 됨"></textarea>
     </label>
+    <label class="field"><span>스크립트 <small>영상 대사·자막을 그대로 옮겨두기</small></span>
+      <textarea id="f-script" class="tall" placeholder="예:&#10;(0초) 이 문 열면 뭐가 있게요?&#10;(2초) 담양 대나무밭 바로 앞 독채예요&#10;(5초) 아침엔 이 창으로 대나무 소리가 들어와요"></textarea>
+    </label>
     <div class="field"><span>캡처 이미지 <small>(선택)</small></span>
       <div class="drop" id="drop">
         <img id="f-prev" alt="" hidden>
@@ -273,6 +284,7 @@ function showStatus(msg, detail) {
 function explain(error) {
   const m = (error && (error.message || error.error_description)) || String(error || "");
   if (/relation .*refs|could not find the table|schema cache/i.test(m)) return "Supabase에 테이블이 아직 없어요. setup.sql을 SQL Editor에서 실행해 주세요.";
+  if (/script/i.test(m) && /column/i.test(m)) return "Supabase에 스크립트 칸이 아직 없어요. SQL Editor에서 add-script.sql을 실행해 주세요.";
   if (/bucket not found/i.test(m)) return "이미지 보관함이 아직 없어요. setup.sql을 다시 실행해 주세요.";
   if (/JWT|session|not authenticated/i.test(m)) return "로그인이 풀렸어요. 다시 로그인해 주세요.";
   if (/Failed to fetch|NetworkError/i.test(m)) return "인터넷 연결을 확인해 주세요.";
@@ -357,6 +369,15 @@ function renderTagRow() {
       onclick: () => { curTag = curTag === t ? null : t; render(); } }, "#" + t));
   }
 }
+function scriptBox(text) {
+  const copy = el("button", { class: "copy", type: "button" }, "스크립트 복사");
+  copy.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(text); copy.textContent = "복사됐어요"; }
+    catch { copy.textContent = "복사 안 됨 · 길게 눌러 선택"; }
+    setTimeout(() => copy.textContent = "스크립트 복사", 1800);
+  });
+  return el("details", { class: "script" }, el("summary", {}, "스크립트"), el("p", { class: "txt" }, text), copy);
+}
 function card(r) {
   const c = catOf(r.category);
   const thumb = el("div", { class: "thumb" + (r.imageUrl ? "" : " short") },
@@ -381,6 +402,7 @@ function card(r) {
     el("div", { class: "body" },
       el("h3", {}, r.title || "(제목 없음)"),
       r.why ? el("p", { class: "why" }, el("span", { class: "k" }, "왜 저장했나"), r.why) : null,
+      r.script ? scriptBox(r.script) : null,
       (r.tags && r.tags.length) ? el("div", { class: "tags" }, r.tags.map(t => el("span", {}, "#" + t))) : null,
       el("div", { class: "meta" },
         el("time", {}, fmtDate(r.created_at)),
@@ -406,7 +428,7 @@ function render() {
   const list = refs.filter(r =>
     (curCat === "all" || r.category === curCat) &&
     (!curTag || (r.tags || []).includes(curTag)) &&
-    (!q || [r.title, r.why, (r.tags || []).join(" "), r.url].join(" ").toLowerCase().includes(q)));
+    (!q || [r.title, r.why, r.script, (r.tags || []).join(" "), r.url].join(" ").toLowerCase().includes(q)));
   if (!list.length) {
     grid.append(el("div", { class: "empty", style: "grid-column:1/-1" }, el("strong", {}, "조건에 맞는 레퍼런스가 없어요"), "카테고리나 태그 필터를 풀어 보세요."));
     return;
@@ -434,6 +456,7 @@ function openForm(r) {
   $("f-plat").value = r?.platform || "릴스";
   $("f-tags").value = (r?.tags || []).join(", ");
   $("f-why").value = r?.why || "";
+  $("f-script").value = r?.script || "";
   formCat = r?.category || (curCat !== "all" ? curCat : "script");
   renderCatPick(); setPreview(r?.imageUrl || null);
   $("formErr").hidden = true;
@@ -487,6 +510,7 @@ $("form").addEventListener("submit", async e => {
       platform: $("f-plat").value,
       tags: $("f-tags").value.split(/[,，]/).map(s => s.trim().replace(/^#/, "")).filter(Boolean),
       why: $("f-why").value.trim(),
+      script: $("f-script").value.trim(),
       image_path: imagePath,
       updated_at: new Date().toISOString(),
     };

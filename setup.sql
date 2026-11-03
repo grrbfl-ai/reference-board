@@ -11,6 +11,7 @@ create table if not exists public.refs (
   platform    text not null default '기타',
   tags        text[] not null default '{}',
   why         text not null default '',
+  script      text not null default '',
   image_path  text not null default '',
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
