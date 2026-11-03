@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>레퍼런스 창고</title>
+<meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151916" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="레퍼런스 창고">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f07a1a'/%3E%3Cpath d='M20 14h24v38l-12-9-12 9z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.js"></script>
+<style>
+/* Layout: 스크랩 보드. 상단 카테고리 탭 + 검색, 아래 카드 그리드. 카테고리마다 고유 색 라벨. */
+:root {
+  --bg: #eef0ec; --surface: #ffffff; --ink: #1d221f; --muted: #66706a; --line: #d6dbd5;
+  --accent: #f07a1a; --accent-ink: #ffffff; --chip: #e4e8e2; --danger: #c8372d;
+  --c-script: #3a6df0; --c-visual: #e0446a; --c-format: #1f9a6a; --c-thumb: #c98a00; --c-edit: #7a4fd6;
+  --f-display: "Black Han Sans", "Gothic A1", system-ui, sans-serif;
+  --f-body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151916; --surface: #1f2420; --ink: #eef1ec; --muted: #9aa49d; --line: #333a35;
+    --accent: #ff9440; --accent-ink: #1a1208; --chip: #2a302b; --danger: #ff6b5f;
+    --c-script: #7b9dff; --c-visual: #ff7d9b; --c-format: #4fd1a0; --c-thumb: #f0b532; --c-edit: #a888ff;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; display: grid; gap: 20px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.brand h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 6vw, 44px); line-height: 1; margin: 0; letter-spacing: -0.01em; }
+.brand h1 .dot { color: var(--accent); }
+.brand p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.count { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.head-acts { display: flex; align-items: center; gap: 10px; }
+.btn-add { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 999px; padding: 12px 20px; font-weight: 800; font-size: 15px; }
+.btn-add:disabled { opacity: .5; cursor: wait; }
+.btn-ghost { background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 700; padding: 8px; border-radius: 8px; }
+.btn-ghost:hover { background: var(--chip); }
+
+nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.tab { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 14px; }
+.tab .sw { width: 9px; height: 9px; border-radius: 50%; background: var(--sw, var(--ink)); }
+.tab .n { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.tab[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tab[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.search { flex: 1 1 260px; min-width: 0; border: 1.5px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 14px; }
+.tagrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.tagf { border: 0; background: var(--chip); border-radius: 6px; padding: 5px 10px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.tagf[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.thumb { aspect-ratio: 4 / 5; max-width: 100%; background: var(--chip); position: relative; display: grid; place-items: center; overflow: hidden; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .ph { font-family: var(--f-display); font-size: 26px; color: var(--cat); text-align: center; padding: 0 16px; line-height: 1.15; }
+.thumb.short { aspect-ratio: 16 / 7; }
+.label { position: absolute; top: 10px; left: 10px; background: var(--cat); color: #fff; font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 6px; letter-spacing: .02em; }
+.plat { position: absolute; top: 10px; right: 10px; background: var(--surface); color: var(--ink); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.body { padding: 14px 16px 16px; display: grid; gap: 10px; min-width: 0; }
+.body h3 { margin: 0; font-size: 16px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+.why { margin: 0; font-size: 14px; line-height: 1.6; border-left: 3px solid var(--cat); padding-left: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.why .k { display: block; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tags span { background: var(--chip); border-radius: 5px; padding: 2px 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; border-top: 1px dashed var(--line); }
+.meta time { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.acts { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.acts a, .acts button { border: 0; background: none; font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 8px; border-radius: 6px; text-decoration: none; }
+.acts a { color: var(--accent); }
+.acts button:hover, .acts a:hover { background: var(--chip); }
+.acts .del.armed { color: var(--danger); }
+
+.empty, .notice { background: var(--surface); border: 1.5px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; color: var(--muted); display: grid; gap: 8px; justify-items: center; }
+.empty strong { color: var(--ink); font-size: 17px; }
+.notice code { font-family: var(--f-mono); font-size: 12px; color: var(--danger); overflow-wrap: anywhere; }
+
+/* 로그인 */
+.login { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px; }
+.login form { width: min(380px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px 24px; display: grid; gap: 14px; }
+.login h1 { font-family: var(--f-display); font-weight: 400; font-size: 34px; line-height: 1; margin: 0 0 4px; }
+.login h1 .dot { color: var(--accent); }
+.login p { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
+.login .btn-add { width: 100%; }
+
+/* 추가/수정 패널 */
+.sheet { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.panel { background: var(--surface); border-radius: 16px; width: min(560px, 100%); max-height: 100%; overflow-y: auto; padding: 22px; display: grid; gap: 14px; }
+.panel h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 24px; }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 13px; font-weight: 800; }
+.field small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.field input, .field select, .field textarea { border: 1.5px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; width: 100%; min-width: 0; font-size: 16px; }
+.field textarea { min-height: 84px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+.catpick { display: flex; flex-wrap: wrap; gap: 6px; }
+.catpick button { border: 1.5px solid var(--line); background: var(--bg); border-radius: 8px; padding: 7px 11px; font-size: 13px; font-weight: 700; }
+.catpick button[aria-pressed="true"] { background: var(--cat); border-color: var(--cat); color: #fff; }
+.drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 14px; text-align: center; color: var(--muted); font-size: 13px; display: grid; gap: 8px; justify-items: center; }
+.drop.over { border-color: var(--accent); color: var(--ink); }
+.drop img { max-height: 160px; border-radius: 8px; }
+.drop .lnk { border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 13px; padding: 0; }
+.panel-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.panel-acts button { border-radius: 999px; padding: 10px 18px; font-weight: 800; border: 1.5px solid var(--line); background: none; }
+.panel-acts .save { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.panel-acts .save:disabled { opacity: .6; cursor: wait; }
+.err { color: var(--danger); font-size: 13px; margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: transform .15s ease; } .card:hover { transform: translateY(-2px); } }
+</style>
+</head>
+<body>
+
+<!-- 로그인 화면 -->
+<section class="login" id="loginView" hidden>
+  <form id="loginForm">
+    <h1>레퍼런스 창고<span class="dot">.</span></h1>
+    <p>귤 전용. 로그인하면 저장한 레퍼런스가 보여요.</p>
+    <label class="field"><span>이메일</span>
+      <input id="l-email" type="email" autocomplete="username" required>
+    </label>
+    <label class="field"><span>비밀번호</span>
+      <input id="l-pw" type="password" autocomplete="current-password" required>
+    </label>
+    <p class="err" id="loginErr" hidden></p>
+    <button class="btn-add" type="submit" id="loginBtn">로그인</button>
+  </form>
+</section>
+
+<!-- 메인 -->
+<div class="wrap" id="appView" hidden>
+  <header class="top">
+    <div class="brand">
+      <h1>레퍼런스 창고<span class="dot">.</span></h1>
+      <p>저장한 레퍼런스 <span class="count" id="total">0</span>개 · 왜 저장했는지 꼭 한 줄 남기기</p>
+    </div>
+    <div class="head-acts">
+      <button class="btn-ghost" id="logoutBtn" type="button">로그아웃</button>
+      <button class="btn-add" id="addBtn" type="button">+ 레퍼런스 추가</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="카테고리"></nav>
+
+  <div class="filters">
+    <input class="search" id="q" type="search" placeholder="제목, 메모, 태그로 찾기">
+    <div class="tagrow" id="tagrow"></div>
+  </div>
+
+  <div id="status" hidden></div>
+  <section class="grid" id="grid" aria-live="polite"></section>
+</div>
+
+<!-- 추가/수정 -->
+<div class="sheet" id="sheet" hidden>
+  <form class="panel" id="form" autocomplete="off">
+    <h2 id="formTitle">레퍼런스 추가</h2>
+    <label class="field"><span>링크</span>
+      <input id="f-url" type="url" inputmode="url" placeholder="https://www.instagram.com/reel/...">
+    </label>
+    <label class="field"><span>제목</span>
+      <input id="f-title" type="text" placeholder="예: 시골집 문 여는 첫 컷으로 시작하는 릴스">
+    </label>
+    <div class="field"><span>카테고리</span>
+      <div class="catpick" id="f-cat"></div>
+    </div>
+    <div class="row2">
+      <label class="field"><span>플랫폼</span>
+        <select id="f-plat">
+          <option>릴스</option><option>쇼츠</option><option>유튜브</option><option>틱톡</option><option>기타</option>
+        </select>
+      </label>
+      <label class="field"><span>태그 <small>쉼표로 구분</small></span>
+        <input id="f-tags" type="text" placeholder="여행, 로컬, 정보형">
+      </label>
+    </div>
+    <label class="field"><span>왜 저장했나</span>
+      <textarea id="f-why" placeholder="예: 첫 1초에 손이 문고리를 잡는 클로즈업. 소리부터 들려서 멈추게 됨"></textarea>
+    </label>
+    <div class="field"><span>캡처 이미지 <small>(선택)</small></span>
+      <div class="drop" id="drop">
+        <img id="f-prev" alt="" hidden>
+        <span id="dropMsg">캡처를 여기에 붙여넣기(⌘V/Ctrl+V)하거나 끌어다 놓기</span>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+          <button class="lnk" type="button" id="pickImg">사진에서 고르기</button>
+          <button class="lnk" type="button" id="clearImg" hidden>이미지 빼기</button>
+        </div>
+        <input id="f-file" type="file" accept="image/*" hidden>
+      </div>
+    </div>
+    <p class="err" id="formErr" hidden></p>
+    <div class="panel-acts">
+      <button type="button" id="cancel">취소</button>
+      <button type="submit" class="save" id="saveBtn">저장</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ===== 설정 ===== */
+const SUPABASE_URL = "https://ropybusofuqfenphftkt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_R6sa2mr-Rypi8H-GZMIndw_S0cghVA5";
+const BUCKET = "ref-images";
+
+const CATS = [
+  { id: "script", name: "브랜딩대본", color: "var(--c-script)" },
+  { id: "visual", name: "비주얼후킹", color: "var(--c-visual)" },
+  { id: "format", name: "포맷", color: "var(--c-format)" },
+  { id: "thumb",  name: "후킹썸네일", color: "var(--c-thumb)" },
+  { id: "edit",   name: "편집방식", color: "var(--c-edit)" },
+];
+const catOf = id => CATS.find(c => c.id === id) || CATS[0];
+const $ = id => document.getElementById(id);
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let userId = null, refs = [], loaded = false;
+let curCat = "all", curTag = null, query = "";
+let editing = null, pendingBlob = null, keepImage = true;
+
+/* ===== 공통 ===== */
+function detectPlatform(url) {
+  const u = (url || "").toLowerCase();
+  if (u.includes("instagram.com")) return "릴스";
+  if (u.includes("youtube.com/shorts")) return "쇼츠";
+  if (u.includes("youtube.com") || u.includes("youtu.be")) return "유튜브";
+  if (u.includes("tiktok.com")) return "틱톡";
+  return "기타";
+}
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+}
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") n.className = v;
+    else if (k === "style") n.setAttribute("style", v);
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c);
+  return n;
+}
+function showStatus(msg, detail) {
+  const s = $("status");
+  if (!msg) { s.hidden = true; s.textContent = ""; return; }
+  s.className = "notice"; s.textContent = "";
+  s.append(el("strong", {}, msg));
+  if (detail) s.append(el("code", {}, detail));
+  s.hidden = false;
+}
+function explain(error) {
+  const m = (error && (error.message || error.error_description)) || String(error || "");
+  if (/relation .*refs|could not find the table|schema cache/i.test(m)) return "Supabase에 테이블이 아직 없어요. setup.sql을 SQL Editor에서 실행해 주세요.";
+  if (/bucket not found/i.test(m)) return "이미지 보관함이 아직 없어요. setup.sql을 다시 실행해 주세요.";
+  if (/JWT|session|not authenticated/i.test(m)) return "로그인이 풀렸어요. 다시 로그인해 주세요.";
+  if (/Failed to fetch|NetworkError/i.test(m)) return "인터넷 연결을 확인해 주세요.";
+  return "문제가 생겼어요. 잠시 뒤 다시 해 주세요.";
+}
+
+/* ===== 로그인 ===== */
+sb.auth.onAuthStateChange((_event, session) => {
+  const id = session?.user?.id || null;
+  const changed = id !== userId;
+  userId = id;
+  $("loginView").hidden = !!id;
+  $("appView").hidden = !id;
+  if (id && changed) setTimeout(load, 0);
+  if (!id) { refs = []; loaded = false; }
+});
+
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btn = $("loginBtn"); btn.disabled = true; btn.textContent = "확인 중…";
+  $("loginErr").hidden = true;
+  const { error } = await sb.auth.signInWithPassword({ email: $("l-email").value.trim(), password: $("l-pw").value });
+  btn.disabled = false; btn.textContent = "로그인";
+  if (error) {
+    $("loginErr").textContent = /invalid login/i.test(error.message) ? "이메일이나 비밀번호가 맞지 않아요." :
+      /not confirmed/i.test(error.message) ? "이메일 인증이 안 된 계정이에요. Supabase에서 Auto Confirm으로 다시 만들어 주세요." : explain(error);
+    $("loginErr").hidden = false;
+  }
+});
+$("logoutBtn").addEventListener("click", () => sb.auth.signOut());
+
+/* ===== 데이터 ===== */
+async function load() {
+  loaded = false; render();
+  const { data, error } = await sb.from("refs").select("*").order("created_at", { ascending: false });
+  if (error) { loaded = true; refs = []; render(); showStatus(explain(error), error.message); return; }
+  showStatus(null);
+  const paths = data.filter(r => r.image_path).map(r => r.image_path);
+  let urlMap = {};
+  if (paths.length) {
+    const { data: signed } = await sb.storage.from(BUCKET).createSignedUrls(paths, 60 * 60 * 6);
+    (signed || []).forEach(s => { if (s.signedUrl) urlMap[s.path] = s.signedUrl; });
+  }
+  refs = data.map(r => ({ ...r, imageUrl: urlMap[r.image_path] || "" }));
+  loaded = true; render();
+}
+
+async function shrink(file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1080 / bmp.width);
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+    return blob || file;
+  } catch { return file; }
+}
+function newId() {
+  return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+}
+
+/* ===== 그리기 ===== */
+function renderTabs() {
+  const tabs = $("tabs"); tabs.textContent = "";
+  const all = [{ id: "all", name: "전체", color: "var(--ink)" }, ...CATS];
+  for (const c of all) {
+    const n = c.id === "all" ? refs.length : refs.filter(r => r.category === c.id).length;
+    tabs.append(el("button", { class: "tab", type: "button", "aria-pressed": String(curCat === c.id), style: `--sw:${c.color}`,
+      onclick: () => { curCat = c.id; render(); } },
+      el("span", { class: "sw" }), c.name, el("span", { class: "n" }, String(n))));
+  }
+}
+function renderTagRow() {
+  const row = $("tagrow"); row.textContent = "";
+  const counts = {};
+  refs.forEach(r => (r.tags || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
+  const tags = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 14);
+  if (curTag && !counts[curTag]) curTag = null;
+  for (const t of tags) {
+    row.append(el("button", { class: "tagf", type: "button", "aria-pressed": String(curTag === t),
+      onclick: () => { curTag = curTag === t ? null : t; render(); } }, "#" + t));
+  }
+}
+function card(r) {
+  const c = catOf(r.category);
+  const thumb = el("div", { class: "thumb" + (r.imageUrl ? "" : " short") },
+    r.imageUrl ? el("img", { src: r.imageUrl, alt: "", loading: "lazy" }) : el("div", { class: "ph" }, c.name),
+    el("span", { class: "label" }, c.name),
+    el("span", { class: "plat" }, r.platform || "기타"));
+  let armed = false;
+  const del = el("button", { class: "del", type: "button" }, "삭제");
+  del.addEventListener("click", async () => {
+    if (!armed) {
+      armed = true; del.textContent = "정말 삭제?"; del.classList.add("armed");
+      setTimeout(() => { if (armed) { armed = false; del.textContent = "삭제"; del.classList.remove("armed"); } }, 3000);
+      return;
+    }
+    armed = false; del.textContent = "삭제 중…";
+    const { error } = await sb.from("refs").delete().eq("id", r.id);
+    if (error) { showStatus(explain(error), error.message); del.textContent = "삭제"; return; }
+    if (r.image_path) await sb.storage.from(BUCKET).remove([r.image_path]);
+    refs = refs.filter(x => x.id !== r.id); render();
+  });
+  return el("article", { class: "card", style: `--cat:${c.color}` }, thumb,
+    el("div", { class: "body" },
+      el("h3", {}, r.title || "(제목 없음)"),
+      r.why ? el("p", { class: "why" }, el("span", { class: "k" }, "왜 저장했나"), r.why) : null,
+      (r.tags && r.tags.length) ? el("div", { class: "tags" }, r.tags.map(t => el("span", {}, "#" + t))) : null,
+      el("div", { class: "meta" },
+        el("time", {}, fmtDate(r.created_at)),
+        el("div", { class: "acts" },
+          r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener" }, "원본 보기 ↗") : null,
+          el("button", { type: "button", onclick: () => openForm(r) }, "수정"),
+          del))));
+}
+function render() {
+  $("total").textContent = refs.length;
+  renderTabs(); renderTagRow();
+  const grid = $("grid"); grid.textContent = "";
+  if (!loaded) { grid.append(el("div", { class: "empty", style: "grid-column:1/-1" }, "불러오는 중…")); return; }
+  if (!refs.length) {
+    if (!$("status").hidden) return;
+    grid.append(el("div", { class: "empty", style: "grid-column:1/-1" },
+      el("strong", {}, "아직 저장한 레퍼런스가 없어요"),
+      "인스타·유튜브 링크를 붙여넣고, 카테고리 고르고, 왜 저장했는지 한 줄 남기면 끝.",
+      el("button", { class: "btn-add", type: "button", onclick: () => openForm(null) }, "+ 첫 레퍼런스 추가")));
+    return;
+  }
+  const q = query.trim().toLowerCase();
+  const list = refs.filter(r =>
+    (curCat === "all" || r.category === curCat) &&
+    (!curTag || (r.tags || []).includes(curTag)) &&
+    (!q || [r.title, r.why, (r.tags || []).join(" "), r.url].join(" ").toLowerCase().includes(q)));
+  if (!list.length) {
+    grid.append(el("div", { class: "empty", style: "grid-column:1/-1" }, el("strong", {}, "조건에 맞는 레퍼런스가 없어요"), "카테고리나 태그 필터를 풀어 보세요."));
+    return;
+  }
+  list.forEach(r => grid.append(card(r)));
+}
+
+/* ===== 추가·수정 폼 ===== */
+let formCat = "script";
+function renderCatPick() {
+  const box = $("f-cat"); box.textContent = "";
+  CATS.forEach(c => box.append(el("button", { type: "button", "aria-pressed": String(formCat === c.id), style: `--cat:${c.color}`,
+    onclick: () => { formCat = c.id; renderCatPick(); } }, c.name)));
+}
+function setPreview(src) {
+  const img = $("f-prev");
+  if (src) { img.src = src; img.hidden = false; $("clearImg").hidden = false; $("dropMsg").textContent = "다른 캡처를 넣으면 바뀌어요"; }
+  else { img.removeAttribute("src"); img.hidden = true; $("clearImg").hidden = true; $("dropMsg").textContent = "캡처를 여기에 붙여넣기(⌘V/Ctrl+V)하거나 끌어다 놓기"; }
+}
+function openForm(r) {
+  editing = r; pendingBlob = null; keepImage = true;
+  $("formTitle").textContent = r ? "레퍼런스 수정" : "레퍼런스 추가";
+  $("f-url").value = r?.url || "";
+  $("f-title").value = r?.title || "";
+  $("f-plat").value = r?.platform || "릴스";
+  $("f-tags").value = (r?.tags || []).join(", ");
+  $("f-why").value = r?.why || "";
+  formCat = r?.category || (curCat !== "all" ? curCat : "script");
+  renderCatPick(); setPreview(r?.imageUrl || null);
+  $("formErr").hidden = true;
+  $("sheet").hidden = false;
+  setTimeout(() => (r ? $("f-title") : $("f-url")).focus(), 30);
+}
+function closeForm() { $("sheet").hidden = true; editing = null; pendingBlob = null; }
+function takeImage(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  pendingBlob = file; setPreview(URL.createObjectURL(file));
+}
+
+$("addBtn").addEventListener("click", () => openForm(null));
+$("cancel").addEventListener("click", closeForm);
+$("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeForm(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheet").hidden) closeForm(); });
+$("f-url").addEventListener("input", e => { if (!editing) $("f-plat").value = detectPlatform(e.target.value); });
+$("q").addEventListener("input", e => { query = e.target.value; render(); });
+$("pickImg").addEventListener("click", () => $("f-file").click());
+$("f-file").addEventListener("change", e => { takeImage(e.target.files[0]); e.target.value = ""; });
+$("clearImg").addEventListener("click", () => { pendingBlob = null; keepImage = false; setPreview(null); });
+$("form").addEventListener("paste", e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+  if (item) { e.preventDefault(); takeImage(item.getAsFile()); }
+});
+const drop = $("drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); takeImage(e.dataTransfer.files[0]); });
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const title = $("f-title").value.trim();
+  if (!title) { $("formErr").textContent = "제목을 적어 주세요."; $("formErr").hidden = false; $("f-title").focus(); return; }
+  const btn = $("saveBtn"); btn.disabled = true; btn.textContent = "저장 중…";
+  $("formErr").hidden = true;
+  try {
+    const oldPath = editing?.image_path || "";
+    let imagePath = keepImage ? oldPath : "";
+    if (pendingBlob) {
+      const blob = await shrink(pendingBlob);
+      const path = `${userId}/${newId()}.jpg`;
+      const { error: upErr } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+      if (upErr) throw upErr;
+      imagePath = path;
+    }
+    const row = {
+      url: $("f-url").value.trim(),
+      title,
+      category: formCat,
+      platform: $("f-plat").value,
+      tags: $("f-tags").value.split(/[,，]/).map(s => s.trim().replace(/^#/, "")).filter(Boolean),
+      why: $("f-why").value.trim(),
+      image_path: imagePath,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = editing
+      ? await sb.from("refs").update(row).eq("id", editing.id)
+      : await sb.from("refs").insert(row);
+    if (error) throw error;
+    if (oldPath && oldPath !== imagePath) await sb.storage.from(BUCKET).remove([oldPath]);
+    closeForm();
+    await load();
+  } catch (err) {
+    $("formErr").textContent = explain(err);
+    $("formErr").hidden = false;
+    console.error(err);
+  } finally { btn.disabled = false; btn.textContent = "저장"; }
+});
+</script>
+</body>
+</html>
