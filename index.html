@@ -271,8 +271,8 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
 
 <script>
 /* ===== 설정 ===== */
-const SUPABASE_URL = "https://ropybusofuqfenphftkt.supabase.co";
-const SUPABASE_KEY = "sb_publishable_R6sa2mr-Rypi8H-GZMIndw_S0cghVA5";
+const SUPABASE_URL = "https://xmjvfmililkjcvvejjww.supabase.co";
+const SUPABASE_KEY = "sb_publishable_p8AISugONZaiTazE78v3nw_BSFGfPMz";
 const BUCKET = "ref-images";
 
 const CATS = [
@@ -331,7 +331,7 @@ function explain(error) {
   if (/(script|idea)/i.test(m) && /column/i.test(m)) return "Supabase에 새 칸(스크립트·응용 아이디어)이 아직 없어요. SQL Editor에서 add-columns.sql을 실행해 주세요.";
   if (/bucket not found/i.test(m)) return "이미지 보관함이 아직 없어요. setup.sql을 다시 실행해 주세요.";
   if (/JWT|session|not authenticated/i.test(m)) return "로그인이 풀렸어요. 다시 로그인해 주세요.";
-  if (/Failed to fetch|NetworkError/i.test(m)) return "인터넷 연결을 확인해 주세요.";
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Supabase 창고에 연결이 안 돼요. 대시보드에서 프로젝트가 멈춤(Paused) 상태인지 확인해 주세요.";
   return "문제가 생겼어요. 잠시 뒤 다시 해 주세요.";
 }
 
