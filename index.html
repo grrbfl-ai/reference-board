@@ -22,6 +22,7 @@
   --bg: #eef0ec; --surface: #ffffff; --ink: #1d221f; --muted: #66706a; --line: #d6dbd5;
   --accent: #f07a1a; --accent-ink: #ffffff; --chip: #e4e8e2; --danger: #c8372d;
   --c-script: #3a6df0; --c-visual: #e0446a; --c-format: #1f9a6a; --c-thumb: #c98a00; --c-edit: #7a4fd6;
+  --c-teal: #0f8c9c; --c-brown: #9a5b2e; --c-slate: #55607a;
   --f-display: "Black Han Sans", "Gothic A1", system-ui, sans-serif;
   --f-body: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -32,6 +33,7 @@
     --bg: #151916; --surface: #1f2420; --ink: #eef1ec; --muted: #9aa49d; --line: #333a35;
     --accent: #ff9440; --accent-ink: #1a1208; --chip: #2a302b; --danger: #ff6b5f;
     --c-script: #7b9dff; --c-visual: #ff7d9b; --c-format: #4fd1a0; --c-thumb: #f0b532; --c-edit: #a888ff;
+    --c-teal: #4cc9d6; --c-brown: #d6905c; --c-slate: #9aa6c4;
     color-scheme: dark;
   }
 }
@@ -132,6 +134,7 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
 .hook blockquote::before { content: "“"; font-family: var(--f-display); color: var(--accent); font-size: 28px; line-height: 0; margin-right: 2px; vertical-align: -10px; }
 .copybtn { border: 1.5px solid var(--accent); color: var(--accent); background: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; white-space: nowrap; }
 .copybtn.done { background: var(--accent); color: var(--accent-ink); }
+.hook .hcat { justify-self: start; background: var(--cat); color: #fff; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 6px; }
 .hook .src { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .hook .src a { color: var(--muted); }
 .hook .note { margin: 0; font-size: 14px; line-height: 1.6; border-left: 3px solid var(--line); padding-left: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -291,6 +294,7 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
     <label class="field"><span>문구</span>
       <textarea id="h-text" class="big" placeholder="예: 여기, 지도에 안 나와요"></textarea>
     </label>
+    <div class="field"><span>유형</span><div class="catpick" id="h-cat"></div></div>
     <label class="field"><span>어디서 봤나 <small>계정, 광고, 링크 등</small></span>
       <input id="h-src" type="text" placeholder="예: @localtrip 릴스 첫 자막 / https://...">
     </label>
@@ -343,6 +347,17 @@ const CATS = [
   { id: "thumb",  name: "후킹썸네일", color: "var(--c-thumb)" },
   { id: "edit",   name: "편집방식", color: "var(--c-edit)" },
 ];
+const HOOK_CATS = [
+  { id: "loss",      name: "부정/손실회피", color: "var(--c-visual)" },
+  { id: "story",     name: "썰/스토리",     color: "var(--c-brown)" },
+  { id: "compare",   name: "비교형",        color: "var(--c-format)" },
+  { id: "number",    name: "숫자/결과형",   color: "var(--c-thumb)" },
+  { id: "target",    name: "타겟저격",      color: "var(--c-script)" },
+  { id: "curiosity", name: "궁금증유발",    color: "var(--c-edit)" },
+  { id: "proof",     name: "권위/증거",     color: "var(--c-slate)" },
+  { id: "insight",   name: "인사이트",      color: "var(--c-teal)" },
+];
+const hookCatOf = id => HOOK_CATS.find(c => c.id === id) || null;
 const SPACES = {
   refs:   { add: "+ 레퍼런스", hint: "릴스·쇼츠 영상 레퍼런스. 링크, 왜 저장했나, 스크립트까지.", search: "제목, 메모, 스크립트, 태그로 찾기" },
   thumbs: { add: "+ 사진 올리기", hint: "캡처만 쑥쑥 올려서 보드처럼 보는 곳. 사진을 누르면 크게 보고 메모를 달 수 있어요.", search: "메모로 찾기" },
@@ -352,7 +367,7 @@ const catOf = id => CATS.find(c => c.id === id) || CATS[0];
 const $ = id => document.getElementById(id);
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const S = { space: "refs", refs: [], thumbs: [], hooks: [], loaded: false, curCat: "all", tag: { refs: null, hooks: null }, query: "" };
+const S = { space: "refs", refs: [], thumbs: [], hooks: [], loaded: false, curCat: "all", hookCat: "all", tag: { refs: null, hooks: null }, query: "" };
 let userId = null;
 try { const sp = localStorage.getItem("ref-space"); if (SPACES[sp]) S.space = sp; } catch {}
 
@@ -393,6 +408,7 @@ function showStatus(msg, detail) {
 }
 function explain(error) {
   const m = (error && (error.message || error.error_description)) || String(error || "");
+  if (/category/i.test(m) && /hooks|column/i.test(m)) return "후킹 문구 유형 칸이 Supabase에 아직 없어요. SQL Editor에서 add-spaces.sql을 다시 실행해 주세요.";
   if (/thumbs|hooks/i.test(m) && /(relation|table|schema cache)/i.test(m)) return "썸네일 보드·후킹 문구 칸이 Supabase에 아직 없어요. SQL Editor에서 add-spaces.sql을 실행해 주세요.";
   if (/(relation|could not find the table|schema cache)/i.test(m)) return "Supabase에 테이블이 아직 없어요. setup.sql을 SQL Editor에서 실행해 주세요.";
   if (/(script|idea)/i.test(m) && /column/i.test(m)) return "Supabase에 스크립트·응용 아이디어 칸이 아직 없어요. setup.sql을 다시 실행해 주세요.";
@@ -495,7 +511,7 @@ function render() {
   $("addBtn").textContent = cfg.add;
   $("spaceHint").textContent = cfg.hint;
   $("q").placeholder = cfg.search;
-  $("tabs").hidden = sp !== "refs";
+  $("tabs").hidden = sp === "thumbs";
   $("uploader").hidden = sp !== "thumbs";
   renderTabs(); renderTagRow();
   const list = $("list"); list.textContent = "";
@@ -514,11 +530,13 @@ const hit = (fields) => !q() || fields.join(" ").toLowerCase().includes(q());
 
 function renderTabs() {
   const tabs = $("tabs"); tabs.textContent = "";
-  if (S.space !== "refs") return;
-  [{ id: "all", name: "전체", color: "var(--ink)" }, ...CATS].forEach(c => {
-    const n = c.id === "all" ? S.refs.length : S.refs.filter(r => r.category === c.id).length;
-    tabs.append(el("button", { class: "tab", type: "button", "aria-pressed": String(S.curCat === c.id), style: `--sw:${c.color}`,
-      onclick: () => { S.curCat = c.id; render(); } }, el("span", { class: "sw" }), c.name, el("span", { class: "n" }, String(n))));
+  if (S.space === "thumbs") return;
+  const isRefs = S.space === "refs";
+  const cats = isRefs ? CATS : HOOK_CATS, items = isRefs ? S.refs : S.hooks, key = isRefs ? "curCat" : "hookCat";
+  [{ id: "all", name: "전체", color: "var(--ink)" }, ...cats].forEach(c => {
+    const n = c.id === "all" ? items.length : items.filter(r => r.category === c.id).length;
+    tabs.append(el("button", { class: "tab", type: "button", "aria-pressed": String(S[key] === c.id), style: `--sw:${c.color}`,
+      onclick: () => { S[key] = c.id; render(); } }, el("span", { class: "sw" }), c.name, el("span", { class: "n" }, String(n))));
   });
 }
 function renderTagRow() {
@@ -630,7 +648,7 @@ armDelete($("tv-del"), async () => {
 /* 후킹 문구 */
 function renderHooks(list) {
   if (!S.hooks.length) { list.append(emptyBox("아직 모은 문구가 없어요", "릴스 자막, 광고 카피, 상세페이지 첫 줄… 눈에 걸린 문장을 그대로 옮겨 두세요.", "+ 첫 문구 추가", () => openHookForm(null))); return; }
-  const rows = S.hooks.filter(h => (!S.tag.hooks || (h.tags || []).includes(S.tag.hooks)) && hit([h.text, h.source, h.note, h.idea, (h.tags || []).join(" ")]));
+  const rows = S.hooks.filter(h => (S.hookCat === "all" || h.category === S.hookCat) && (!S.tag.hooks || (h.tags || []).includes(S.tag.hooks)) && hit([h.text, h.source, h.note, h.idea, (h.tags || []).join(" ")]));
   if (!rows.length) { list.append(emptyBox("조건에 맞는 문구가 없어요", "태그 필터나 검색어를 바꿔 보세요.")); return; }
   rows.forEach(h => list.append(hookCard(h)));
 }
@@ -643,7 +661,9 @@ function hookCard(h) {
     if (error) { showStatus(explain(error), error.message); return; }
     S.hooks = S.hooks.filter(x => x.id !== h.id); render();
   });
-  return el("article", { class: "hook" },
+  const hc = hookCatOf(h.category);
+  return el("article", { class: "hook", style: hc ? `--cat:${hc.color}` : "" },
+    hc ? el("span", { class: "hcat" }, hc.name) : null,
     el("div", { class: "line" }, el("blockquote", {}, h.text), copy),
     h.source ? el("div", { class: "src" }, "출처 · ", isUrl(h.source) ? el("a", { href: h.source.trim(), target: "_blank", rel: "noopener" }, h.source.trim()) : h.source) : null,
     h.note ? el("p", { class: "note" }, el("span", { class: "k" }, "내 생각"), h.note) : null,
@@ -652,13 +672,19 @@ function hookCard(h) {
     el("div", { class: "meta" }, el("time", {}, fmtDate(h.created_at)),
       el("div", { class: "acts" }, el("button", { type: "button", onclick: () => openHookForm(h) }, "수정"), del)));
 }
-let editingHook = null;
+let editingHook = null, hookFormCat = "";
+function renderHookCatPick() {
+  const box = $("h-cat"); box.textContent = "";
+  HOOK_CATS.forEach(c => box.append(el("button", { type: "button", "aria-pressed": String(hookFormCat === c.id), style: `--cat:${c.color}`,
+    onclick: () => { hookFormCat = hookFormCat === c.id ? "" : c.id; renderHookCatPick(); } }, c.name)));
+}
 function openHookForm(h) {
   editingHook = h;
   $("hookFormTitle").textContent = h ? "문구 수정" : "후킹 문구 추가";
   $("h-text").value = h?.text || ""; $("h-src").value = h?.source || "";
   $("h-note").value = h?.note || ""; $("h-idea").value = h?.idea || "";
   $("h-tags").value = (h?.tags || []).join(", ");
+  hookFormCat = h ? (h.category || "") : (S.hookCat !== "all" ? S.hookCat : ""); renderHookCatPick();
   $("hookErr").hidden = true; $("hookSheet").hidden = false;
   setTimeout(() => $("h-text").focus(), 30);
 }
@@ -667,7 +693,7 @@ $("hookForm").addEventListener("submit", async e => {
   const text = $("h-text").value.trim();
   if (!text) { $("hookErr").textContent = "문구를 적어 주세요."; $("hookErr").hidden = false; return; }
   const btn = $("hookSave"); btn.disabled = true; btn.textContent = "저장 중…";
-  const row = { text, source: $("h-src").value.trim(), note: $("h-note").value.trim(), idea: $("h-idea").value.trim(), tags: splitTags($("h-tags").value), updated_at: new Date().toISOString() };
+  const row = { text, category: hookFormCat, source: $("h-src").value.trim(), note: $("h-note").value.trim(), idea: $("h-idea").value.trim(), tags: splitTags($("h-tags").value), updated_at: new Date().toISOString() };
   const res = editingHook
     ? await sb.from("hooks").update(row).eq("id", editingHook.id).select().single()
     : await sb.from("hooks").insert(row).select().single();

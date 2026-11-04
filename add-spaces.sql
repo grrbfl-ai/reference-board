@@ -26,6 +26,7 @@ create table if not exists public.hooks (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   text        text not null,
+  category    text not null default '',
   source      text not null default '',
   note        text not null default '',
   idea        text not null default '',
@@ -33,6 +34,7 @@ create table if not exists public.hooks (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+alter table public.hooks add column if not exists category text not null default '';
 create index if not exists hooks_user_created_idx on public.hooks (user_id, created_at desc);
 grant select, insert, update, delete on public.hooks to authenticated;
 alter table public.hooks enable row level security;
