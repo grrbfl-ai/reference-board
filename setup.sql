@@ -7,7 +7,7 @@ create table if not exists public.refs (
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   url         text not null default '',
   title       text not null,
-  category    text not null check (category in ('script','visual','format','thumb','edit')),
+  category    text not null,
   platform    text not null default '기타',
   tags        text[] not null default '{}',
   why         text not null default '',
@@ -18,6 +18,7 @@ create table if not exists public.refs (
   updated_at  timestamptz not null default now()
 );
 
+alter table public.refs drop constraint if exists refs_category_check;
 create index if not exists refs_user_created_idx on public.refs (user_id, created_at desc);
 
 grant select, insert, update, delete on public.refs to authenticated;
