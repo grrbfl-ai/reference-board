@@ -193,7 +193,7 @@ nav.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrol
 <section class="login" id="loginView" hidden>
   <form id="loginForm">
     <h1>레퍼런스 창고<span class="dot">.</span></h1>
-    <p>귤 전용. 로그인하면 저장한 레퍼런스가 보여요.</p>
+    <p id="loginMsg">귤 전용. 로그인하면 저장한 레퍼런스가 보여요.</p>
     <label class="field"><span>이메일</span>
       <input id="l-email" type="email" autocomplete="username" required>
     </label>
@@ -369,6 +369,38 @@ const $ = id => document.getElementById(id);
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const S = { space: "refs", refs: [], thumbs: [], hooks: [], loaded: false, curCat: "all", hookCat: "all", tag: { refs: null, hooks: null }, query: "" };
 let userId = null;
+
+/* 인스타 등에서 공유로 들어온 링크·문구 */
+function safeDecode(s) { try { return decodeURIComponent(s); } catch { return s; } }
+function readShare() {
+  let url = "", hook = "";
+  const h = location.hash || "";
+  if (h.startsWith("#add=")) url = safeDecode(h.slice(5));
+  else if (h.startsWith("#hook=")) hook = safeDecode(h.slice(6));
+  const p = new URLSearchParams(location.search);
+  if (!url) url = p.get("url") || "";
+  if (!hook) hook = p.get("hook") || "";
+  const text = p.get("text") || "";
+  if (!url && text) { const m = text.match(/https?:\/\/\S+/); if (m) url = m[0]; else if (!hook) hook = text; }
+  url = url.trim(); hook = hook.trim();
+  if (!url && !hook) return null;
+  try { history.replaceState(null, "", location.pathname); } catch {}
+  return { url, hook };
+}
+let pendingShare = readShare();
+function applyShare() {
+  if (!pendingShare) return;
+  const { url, hook } = pendingShare; pendingShare = null;
+  if (url) {
+    setSpace("refs"); openRefForm(null);
+    $("f-url").value = url; $("f-plat").value = detectPlatform(url);
+    const clean = u => u.split("?")[0].replace(/\/$/, "");
+    if (S.refs.some(r => r.url && clean(r.url) === clean(url))) { $("refErr").textContent = "이미 저장한 링크예요. 그래도 저장하면 하나 더 생겨요."; $("refErr").hidden = false; }
+    setTimeout(() => $("f-title").focus(), 60);
+  } else if (hook) {
+    setSpace("hooks"); openHookForm(null); $("h-text").value = hook;
+  }
+}
 try { const sp = localStorage.getItem("ref-space"); if (SPACES[sp]) S.space = sp; } catch {}
 
 /* ===== 공통 ===== */
@@ -496,6 +528,7 @@ async function loadAll() {
   S.loaded = true;
   if (firstErr) showStatus(explain(firstErr), firstErr.message); else showStatus(null);
   render();
+  applyShare();
 }
 
 /* ===== 그리기 ===== */
@@ -791,6 +824,7 @@ document.addEventListener("paste", e => {
   if (files.length) { e.preventDefault(); uploadThumbs(files); }
 });
 
+if (pendingShare) $("loginMsg").textContent = "공유한 링크가 대기 중이에요. 로그인하면 바로 저장 창이 열려요.";
 render();
 </script>
 </body>
